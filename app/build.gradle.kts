@@ -29,3 +29,20 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers-mysql")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+tasks.test {
+    useJUnitPlatform { excludeTags("json-logging") }
+}
+
+val jsonLoggingTest = tasks.register<Test>("jsonLoggingTest") {
+    description = "Testes do perfil de log JSON, em JVM própria."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("json-logging") }
+    shouldRunAfter(tasks.test)
+}
+
+tasks.check {
+    dependsOn(jsonLoggingTest)
+}
