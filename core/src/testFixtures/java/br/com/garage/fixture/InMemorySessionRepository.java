@@ -44,11 +44,16 @@ public class InMemorySessionRepository implements SessionRepository {
     }
 
     @Override
-    public void close(Closed session) {
-        Optional<SectorCode> sector = Optional.ofNullable(active.remove(session.plate()))
+    public boolean close(Closed session) {
+        ParkingSession previous = active.remove(session.plate());
+        if (previous == null) {
+            return false;
+        }
+        Optional<SectorCode> sector = Optional.of(previous)
                 .filter(Parked.class::isInstance)
-                .map(previous -> ((Parked) previous).sector());
+                .map(p -> ((Parked) p).sector());
         closed.add(new ClosedEntry(session, sector));
+        return true;
     }
 
     @Override

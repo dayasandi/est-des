@@ -10,6 +10,7 @@ import br.com.garage.application.port.inbound.ExitResult.LeftWithoutParking;
 import br.com.garage.application.port.inbound.ExitResult.NoActiveSession;
 import br.com.garage.application.port.inbound.RegisterExit;
 import br.com.garage.domain.parking.LicensePlate;
+import br.com.garage.domain.parking.ParkingSession.Closed;
 import br.com.garage.domain.parking.ParkingSession.Entered;
 import br.com.garage.domain.shared.Money;
 import br.com.garage.fixture.DirectTransactionRunner;
@@ -102,6 +103,41 @@ class RegisterExitUseCaseTest {
             assertThat(entry.session().amount()).isEqualTo(Money.ZERO);
             assertThat(entry.sector()).isEmpty();
         });
+    }
+
+    @Test
+    void saidaConcorrenteQueInvadeEPerdeACorridaNaoCobraNemLiberaVagaDeNovo() {
+        parkAt(PLATE, 3, "1.00");
+        InMemorySessionRepository racing = new InMemorySessionRepository() {
+            @Override
+            public boolean close(Closed session) {
+                return false;
+            }
+        };
+        racing.add(new Entered(PLATE, ENTRY));
+        racing.park(new Entered(PLATE, ENTRY).parkAt(TestGarage.spot(3), TestGarage.SECTOR_A.basePrice(), BigDecimal.ONE));
+        RegisterExit racingExit = new RegisterExitUseCase(racing, capacity, new DirectTransactionRunner());
+
+        ExitResult result = racingExit.register(PLATE, ENTRY.plus(Duration.ofHours(1)));
+
+        assertThat(result).isEqualTo(new NoActiveSession());
+        assertThat(capacity.reserved()).isEqualTo(1);
+    }
+
+    @Test
+    void saidaSemEstacionarQuePerdeACorridaTambemNaoLibera() {
+        capacity.tryReserve();
+        InMemorySessionRepository racing = new InMemorySessionRepository() {
+            @Override
+            public boolean close(Closed session) {
+                return false;
+            }
+        };
+        racing.add(new Entered(PLATE, ENTRY));
+        RegisterExit racingExit = new RegisterExitUseCase(racing, capacity, new DirectTransactionRunner());
+
+        assertThat(racingExit.register(PLATE, ENTRY.plusSeconds(60))).isEqualTo(new NoActiveSession());
+        assertThat(capacity.reserved()).isEqualTo(1);
     }
 
     @Test

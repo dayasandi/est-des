@@ -77,15 +77,16 @@ public class JdbcSessionRepository implements SessionRepository {
     }
 
     @Override
-    public void close(Closed closed) {
-        jdbc.sql("""
+    public boolean close(Closed closed) {
+        return jdbc.sql("""
                         UPDATE parking_session SET status = 'CLOSED', exit_time = :exit, amount = :amount
                         WHERE active_plate = :plate
                         """)
                 .param("exit", Timestamps.toDb(closed.exitTime()))
                 .param("amount", closed.amount().amount())
                 .param("plate", closed.plate().value())
-                .update();
+                .update()
+                == 1;
     }
 
     @Override

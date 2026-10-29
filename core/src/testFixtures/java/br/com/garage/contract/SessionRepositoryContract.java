@@ -118,6 +118,24 @@ public abstract class SessionRepositoryContract {
     }
 
     @Test
+    void encerrarDuasVezesAMesmaPermanenciaSoContaNaPrimeira() {
+        repo().add(new Entered(PLATE_1, ENTRY));
+        Parked parked = parkedAt(PLATE_1, 3);
+        repo().park(parked);
+        Closed closed = parked.leave(ENTRY.plusSeconds(7200));
+
+        assertThat(repo().close(closed)).isTrue();
+        assertThat(repo().close(closed)).isFalse();
+    }
+
+    @Test
+    void encerrarPlacaSemPermanenciaAtivaDevolveFalso() {
+        Closed closed = new Entered(PLATE_1, ENTRY).leave(ENTRY.plusSeconds(60));
+
+        assertThat(repo().close(closed)).isFalse();
+    }
+
+    @Test
     void contaApenasEstacionadosDoSetorIgnorandoEntradasEEncerrados() {
         LicensePlate p3 = new LicensePlate("CCC0003");
         LicensePlate p4 = new LicensePlate("DDD0004");
