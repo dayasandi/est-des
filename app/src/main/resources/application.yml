@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: est-des
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 3003
