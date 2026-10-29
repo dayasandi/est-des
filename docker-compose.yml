@@ -1,0 +1,65 @@
+name: est-des
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: garage
+      MYSQL_USER: ${DB_USER:-garage}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-garage}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID, DAC_OVERRIDE]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  simulator:
+    image: cfontes0estapar/garage-sim:1.0.0
+    networks: [backend]
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3003:3003"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 100
+
+  app:
+    build: .
+    network_mode: "service:simulator"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      simulator:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/garage
+      DB_USER: ${DB_USER:-garage}
+      DB_PASSWORD: ${DB_PASSWORD:-garage}
+      SIMULATOR_URL: http://localhost:3000
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-json}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/3003 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q ' 200'"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+
+networks:
+  backend:
+
+volumes:
+  mysql-data:
