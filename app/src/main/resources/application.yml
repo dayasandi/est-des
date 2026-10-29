@@ -4,6 +4,16 @@ spring:
   threads:
     virtual:
       enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/garage}
+    username: ${DB_USER:garage}
+    password: ${DB_PASSWORD:garage}
+  flyway:
+    enabled: true
 
 server:
   port: 3003
+
+garage:
+  simulator:
+    url: ${SIMULATOR_URL:http://localhost:3000}
