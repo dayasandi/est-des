@@ -13,7 +13,7 @@ public interface SessionRepository {
 
     boolean park(ParkingSession.Parked parked);
 
-    void close(ParkingSession.Closed closed);
+    boolean close(ParkingSession.Closed closed);
 
     int countParkedIn(SectorCode sector);
 }

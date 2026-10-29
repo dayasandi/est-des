@@ -14,6 +14,7 @@ import br.com.garage.domain.parking.ParkingSession.Entered;
 import br.com.garage.domain.parking.ParkingSession.Parked;
 import br.com.garage.domain.shared.Money;
 import java.time.Instant;
+import java.util.Optional;
 
 public final class RegisterExitUseCase implements RegisterExit {
 
@@ -31,19 +32,22 @@ public final class RegisterExitUseCase implements RegisterExit {
     public ExitResult register(LicensePlate plate, Instant exitTime) {
         return transactions.inTransaction(() -> sessions.findActive(plate)
                 .<ExitResult>map(session -> switch (session) {
-                    case Parked parked -> new Charged(parked.sector(), close(parked.leave(exitTime)));
-                    case Entered entered -> {
-                        close(entered.leave(exitTime));
-                        yield new LeftWithoutParking();
-                    }
+                    case Parked parked -> close(parked.leave(exitTime))
+                            .<ExitResult>map(amount -> new Charged(parked.sector(), amount))
+                            .orElseGet(NoActiveSession::new);
+                    case Entered entered -> close(entered.leave(exitTime))
+                            .<ExitResult>map(amount -> new LeftWithoutParking())
+                            .orElseGet(NoActiveSession::new);
                     case Closed closed -> new NoActiveSession();
                 })
                 .orElseGet(NoActiveSession::new));
     }
 
-    private Money close(Closed closed) {
-        sessions.close(closed);
+    private Optional<Money> close(Closed closed) {
+        if (!sessions.close(closed)) {
+            return Optional.empty();
+        }
         capacity.release();
-        return closed.amount();
+        return Optional.of(closed.amount());
     }
 }
