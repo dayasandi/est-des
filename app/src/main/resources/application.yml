@@ -50,3 +50,12 @@ management:
 logging:
   pattern:
     correlation: "[%X{request_id:-}] "
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    br.com.garage: ${LOG_LEVEL_APP:INFO}
+    org.springframework: WARN
+    org.springframework.boot.web.embedded.tomcat: INFO
+    org.apache: WARN
+    org.flywaydb: INFO
+    com.zaxxer.hikari: WARN
+    com.mysql: WARN

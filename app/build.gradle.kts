@@ -3,11 +3,16 @@ plugins {
     alias(libs.plugins.spring.boot)
 }
 
+configurations.all {
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+}
+
 dependencies {
     implementation(project(":core"))
 
     implementation(platform(libs.spring.boot.dependencies))
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
