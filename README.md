@@ -2,6 +2,18 @@
 
 Backend de gestão de estacionamento: recebe os eventos de entrada, estacionamento e saída de veículos, calcula o valor a cobrar com preço dinâmico por lotação e informa o faturamento por dia e por setor.
 
+## Quick start
+
+Requer apenas Docker com Compose.
+
+```bash
+git clone https://github.com/dayasandi/est-des.git && cd est-des
+docker compose up -d --build
+curl "http://127.0.0.1:3003/revenue?date=$(date -u +%Y-%m-%d)"
+```
+
+O primeiro build leva alguns minutos. Quando `docker compose ps` mostrar `app` como `healthy`, o simulador já está enviando eventos e o último comando devolve o faturamento do dia. Para encerrar: `docker compose down -v`.
+
 ## Sumário
 
 1. [Visão geral](#visão-geral)
@@ -79,23 +91,43 @@ SPRING_PROFILES_ACTIVE=default docker compose up -d --build
 
 ### Opção 2: aplicação local com Gradle
 
-Pré-requisitos: JDK 21 (há um `.sdkmanrc` com a versão) e um MySQL 8.x acessível.
+Use este modo para desenvolver e depurar a aplicação na sua máquina. Pré-requisitos: JDK 21 (há um `.sdkmanrc` com a versão) e Docker.
 
-Banco de desenvolvimento rápido com Docker:
+1. Suba o MySQL e o simulador, publicando as portas no host:
 
 ```bash
-docker run -d --name garage-mysql -p 3306:3306 -e MYSQL_DATABASE=garage -e MYSQL_USER=garage -e MYSQL_PASSWORD=garage -e MYSQL_RANDOM_ROOT_PASSWORD=yes mysql:8.4
+docker run -d --name garage-mysql -p 127.0.0.1:3306:3306 -e MYSQL_DATABASE=garage -e MYSQL_USER=garage -e MYSQL_PASSWORD=garage -e MYSQL_RANDOM_ROOT_PASSWORD=yes mysql:8.4
+docker run -d --name garage-sim -p 127.0.0.1:3000:3000 cfontes0estapar/garage-sim:1.0.0
 ```
 
-Aplicação:
+2. Suba a aplicação (no Windows, `gradlew.bat` no lugar de `./gradlew`):
 
 ```bash
 ./gradlew :app:bootRun
 ```
 
-No Windows, use `gradlew.bat` no lugar de `./gradlew`.
+3. Confirme que ela sincronizou a garagem com o simulador:
 
-Sem o simulador respondendo em `http://localhost:3000`, a aplicação tenta sincronizar a garagem com backoff exponencial, fica com o readiness em `DOWN` e responde `503` nos endpoints de negócio até conseguir. Os eventos do simulador só chegam ao webhook quando ele roda na mesma rede da aplicação (como no compose), porque ele sempre chama `localhost:3003` de dentro do próprio container.
+```bash
+curl http://127.0.0.1:3003/actuator/health/readiness
+```
+
+4. Envie eventos manualmente, já que neste modo o simulador não alcança o webhook (veja a nota abaixo):
+
+```bash
+curl -X POST http://127.0.0.1:3003/webhook -H "Content-Type: application/json" -d '{"license_plate":"ABC1234","entry_time":"2026-10-29T10:00:00.000Z","event_type":"ENTRY"}'
+curl -X POST http://127.0.0.1:3003/webhook -H "Content-Type: application/json" -d '{"license_plate":"ABC1234","lat":-23.561684,"lng":-46.655981,"event_type":"PARKED"}'
+curl -X POST http://127.0.0.1:3003/webhook -H "Content-Type: application/json" -d '{"license_plate":"ABC1234","exit_time":"2026-10-29T13:10:00.000Z","event_type":"EXIT"}'
+curl "http://127.0.0.1:3003/revenue?date=2026-10-29"
+```
+
+O resultado esperado com a garagem vazia é `CHARGED` com `109.35` (3 horas × 40,50 × 0,90).
+
+5. Para limpar: `Ctrl+C` na aplicação e `docker rm -f garage-sim garage-mysql`.
+
+Por que os eventos são manuais: o simulador sempre envia os eventos para `localhost:3003` **dentro do próprio container**. No Docker Compose a aplicação divide a rede com o simulador e por isso recebe tudo sozinha. Rodando a aplicação fora do Docker, ela só consegue buscar `GET /garage` na porta 3000; o fluxo automático de eventos só acontece com o `docker compose up`.
+
+Se o simulador não estiver respondendo em `http://localhost:3000`, a aplicação tenta sincronizar com backoff exponencial, mantém o readiness em `DOWN` e responde `503` nos endpoints de negócio até conseguir.
 
 ### Gerar o jar
 
