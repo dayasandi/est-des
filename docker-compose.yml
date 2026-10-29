@@ -52,7 +52,7 @@ services:
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/3003 && printf 'GET /actuator/health/readiness HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q ' 200'"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3003 && printf 'GET /actuator/health/readiness HTTP/1.0\r\n\r\n' >&3 && head -n1 <&3 | grep -q ' 200'"]
       interval: 5s
       timeout: 3s
       retries: 20
