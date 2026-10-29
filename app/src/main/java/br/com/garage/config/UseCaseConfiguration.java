@@ -19,6 +19,11 @@ import br.com.garage.application.usecase.RegisterParkingUseCase;
 import br.com.garage.application.usecase.SyncGarageUseCase;
 import br.com.garage.domain.pricing.PriceTable;
 import br.com.garage.domain.pricing.PricingPolicy;
+import br.com.garage.observability.EventMetrics;
+import br.com.garage.observability.MeteredRegisterEntry;
+import br.com.garage.observability.MeteredRegisterExit;
+import br.com.garage.observability.MeteredRegisterParking;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,8 +42,9 @@ class UseCaseConfiguration {
     }
 
     @Bean
-    RegisterEntry registerEntry(SessionRepository sessions, CapacityGate capacity, TransactionRunner tx) {
-        return new RegisterEntryUseCase(sessions, capacity, tx);
+    RegisterEntry registerEntry(
+            SessionRepository sessions, CapacityGate capacity, TransactionRunner tx, EventMetrics metrics) {
+        return new MeteredRegisterEntry(new RegisterEntryUseCase(sessions, capacity, tx), metrics);
     }
 
     @Bean
@@ -47,13 +53,19 @@ class UseCaseConfiguration {
             SpotRepository spots,
             SectorRepository sectors,
             PricingPolicy pricing,
-            TransactionRunner tx) {
-        return new RegisterParkingUseCase(sessions, spots, sectors, pricing, tx);
+            TransactionRunner tx,
+            EventMetrics metrics) {
+        return new MeteredRegisterParking(new RegisterParkingUseCase(sessions, spots, sectors, pricing, tx), metrics);
     }
 
     @Bean
-    RegisterExit registerExit(SessionRepository sessions, CapacityGate capacity, TransactionRunner tx) {
-        return new RegisterExitUseCase(sessions, capacity, tx);
+    RegisterExit registerExit(
+            SessionRepository sessions,
+            CapacityGate capacity,
+            TransactionRunner tx,
+            EventMetrics metrics,
+            MeterRegistry registry) {
+        return new MeteredRegisterExit(new RegisterExitUseCase(sessions, capacity, tx), metrics, registry);
     }
 
     @Bean

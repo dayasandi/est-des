@@ -8,7 +8,6 @@ import br.com.garage.inbound.sync.RetryingGarageSynchronizer;
 import br.com.garage.outbound.simulator.SimulatorGarageClient;
 import br.com.garage.outbound.simulator.SimulatorProperties;
 import java.time.Duration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +23,6 @@ class SyncConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(GarageConfigProvider.class)
     GarageConfigProvider simulatorGarageClient(SimulatorProperties properties) {
         return new SimulatorGarageClient(properties);
     }

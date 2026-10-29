@@ -8,9 +8,13 @@ dependencies {
 
     implementation(platform(libs.spring.boot.dependencies))
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
     implementation("org.flywaydb:flyway-mysql")
+    implementation(libs.bucket4j.core)
+    implementation("com.github.ben-manes.caffeine:caffeine")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("com.mysql:mysql-connector-j")
 
     testImplementation(testFixtures(project(":core")))
